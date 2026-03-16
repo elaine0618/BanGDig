@@ -1,0 +1,77 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+/* ==================== 本地图片光标 ==================== */
+/* 强制所有状态保持光标样式 */
+html, body, canvas, a, button, input, [role="button"], .clickable,
+*:active, *:focus, *:hover {
+    cursor: url('images/cursor.png') 12 12, auto !important;
+}
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+    position: relative;
+}
+
+body::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(2px 2px at 20px 30px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 80px 120px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 160px 50px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 250px 180px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 350px 90px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 450px 200px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 550px 140px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 650px 60px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 750px 170px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 850px 30px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 950px 120px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 1050px 80px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 1150px 150px, #fff, rgba(0,0,0,0));
+    background-size: 200px 200px;
+    background-repeat: repeat;
+    opacity: 0.3;
+    pointer-events: none;
+}
+#gameCanvas {
+    display: block;
+    width: 1200px;
+    height: 900px;
+    background: #ffffff;
+    border: 6px solid #FFD700;
+    border-radius: 8px;
+}
+/* ==================== 鼠标点击星星特效 ==================== */
+.click-star {
+    position: fixed;
+    pointer-events: none;
+    font-size: 20px;
+    animation: starScatter 0.6s ease-out forwards;
+    z-index: 9999;
+    color: inherit;
+    transform-origin: center;
+}
+
+@keyframes starScatter {
+    0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(0.5);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(var(--tx), var(--ty)) scale(1);
+    }
+}
