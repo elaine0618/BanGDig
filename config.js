@@ -1,12 +1,19 @@
 // ==================== 地块类型定义 ====================
-// ==================== 主程序修改方法 ====================
+// ==================== 1 普通地块 2 空地块 3 可炸开地块 4 5 固定地块 ====================
+// ==================== STONE 常规图片 过程 销毁图片 ====================
 const BLOCK_TYPES = {
-    NORMAL: 1,
-    EMPTY: 3,
-    STONE: 4,
-    END: 5,
-    START: 6
+    NORMAL: { id: 1, types: 1, images: ['dikuai1', 'dikuai2', 'dikuai3'] },
+    EMPTY: { id: 3, types: 2,  images: ['dikuai3'] },
+    STONE: { id: 4, types: 3,  images: ['dikuai4' , 'dikuai3'] },
+    END: { id: 5, types: 4,  images: ['dikuaiEnd'] },
+    START: { id: 6, types: 5,  images: ['dikuaiStart1', 'dikuaiStart2', 'dikuaiStart3'] }
 };
+
+const BLOCK_TYPE_MAP = {};
+for (let key in BLOCK_TYPES) {
+    const type = BLOCK_TYPES[key];
+    BLOCK_TYPE_MAP[type.id] = type;
+}
 
 // ==================== 矿石类型定义 ====================
 // ==================== 下方配置图片 ====================

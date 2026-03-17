@@ -5,10 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DIGTOMORI</title>
     <link rel="stylesheet" href="style.css">
-    <!-- 引入文件 -->
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
+	<!-- 引入文件 -->
+	<script src="config.js"></script>
+	<script src="utils.js"></script>
+	<script src="drawUtils.js"></script>
 	<script src="audio.js"></script>
+	<script src="blocks.js"></script>
+	<script src="ores.js"></script>
+	<script src="items.js"></script>
+	<script src="bomb.js"></script>
+	<script src="shop.js"></script>
 </head>
 <body>
     <canvas id="gameCanvas" width="1200" height="900"></canvas>
@@ -18,10 +24,11 @@
         const ctx = canvas.getContext('2d');        
         canvas.style.width = '1200px';
         canvas.style.height = '900px';
+        
         // ==================== 游戏状态 在此设置HP能量金币初始值 ====================
         const state = {
-			oxygen: 100,
-			hp: 100,
+            oxygen: 100,
+            hp: 100,
             totalGold: 0,
             shop: {
                 isOpen: false,
@@ -33,24 +40,23 @@
                 maxScroll: 0,
                 selectedOre: null,
                 selectedItem: null,
-				animScale: 0,        // 当前缩放值 0-1
-				animTarget: 0,       // 目标缩放值 0或1
-				animSpeed: 0.1,       // 动画速度
-				shopItems: Object.keys(ITEMS).map(id => ({
-					id: id,
-					name: ITEMS[id].name,
-					price: ITEMS[id].price,
-					icon: images[ITEMS[id].icon]
-				}))
+                animScale: 0,
+                animTarget: 0,
+                animSpeed: 0.1,
+                shopItems: Object.keys(ITEMS).map(id => ({
+                    id: id,
+                    name: ITEMS[id].name,
+                    price: ITEMS[id].price,
+                    icon: images[ITEMS[id].icon]
+                }))
             },
-			// 装饰物
-			decor: {
-				x: 0,
-				y: 0,
-				width: 1200,
-				height: 900,
-				image: images.decor01
-			},
+            decor: {
+                x: 0,
+                y: 0,
+                width: 1200,
+                height: 900,
+                image: images.decor01
+            },
             player: {
                 headX: 0,
                 headY: 0,
@@ -60,25 +66,23 @@
                 grounded: false,
                 depth: 0
             },
-			// 从 ORES 自动生成 inventory
-			inventory: (() => {
-				const inv = {};
-				for (let type in ORES) {
-					inv[ORES[type].key] = ORES[type].count;
-				}
-				return inv;
-			})(),
-			// 从 ITEMS 自动生成 items
-			items: (() => {
-				const its = {};
-				for (let id in ITEMS) {
-					its[id] = ITEMS[id].count;
-				}
-				return its;
-			})(),
-			currentItemPage: 0, // 当前道具页数，从0开始
-			maxItemPage: 0,     // 最大页数
-			oreNotification: null,  // 矿石收集提示
+            inventory: (() => {
+                const inv = {};
+                for (let type in ORES) {
+                    inv[ORES[type].key] = ORES[type].count;
+                }
+                return inv;
+            })(),
+            items: (() => {
+                const its = {};
+                for (let id in ITEMS) {
+                    its[id] = ITEMS[id].count;
+                }
+                return its;
+            })(),
+            currentItemPage: 0,
+            maxItemPage: 0,
+            oreNotification: null,
             isFlying: false,
             isDrilling: false,
             drillDirection: null,
@@ -113,82 +117,27 @@
             },
             maxVisibleRow: CONFIG.initialVisibleRows - 1
         };
+        
         let blocks = [];
         let loadedCount = 0;
         const totalImages = Object.keys(images).length;
 
         // ==================== 初始化 ====================
-        function init() {
-            state.horizonY = canvas.height / 2 + CONFIG.horizonOffset;
-            
-            for (let img in images) {
-                images[img].onload = () => {
-                    loadedCount++;
-                    if (loadedCount === totalImages) {
-                        initAllBlocks();
-                        initPlayerPosition();
-                        requestAnimationFrame(gameLoop);
-                    }
-                };
-            }
-        }
-
-        // ==================== 初始化 在此设置新地块 ====================
-        function initAllBlocks() {
-            blocks = [];
-            const startY = state.horizonY + 2;
-            
-            for (let row = 0; row < CONFIG.totalRows; row++) {
-                const layoutRow = MAP_LAYOUT[row];
-                const oreRow = ORE_LAYOUT[row] || [];
-                
-                for (let col = 0; col < CONFIG.blockCols; col++) {
-                    const blockType = layoutRow[col] || BLOCK_TYPES.NORMAL;
-                    const oreType = oreRow[col] || 0;
-                    const x = col * CONFIG.blockSize;
-                    const y = startY + row * CONFIG.blockSize;
-                    
-                    let initialState = 1;
-                    let isStone = false;
-                    let isEnd = false;
-                    let isStart = false;
-                    
-					//加入新地块
-                    if (blockType === BLOCK_TYPES.EMPTY) {
-                        initialState = 3;
-                    } else if (blockType === BLOCK_TYPES.STONE) {
-                        initialState = 4;
-                        isStone = true;
-                    } else if (blockType === BLOCK_TYPES.END) {
-                        initialState = 5;
-                        isEnd = true;
-                    }else if (blockType === BLOCK_TYPES.START) {
-						initialState = 1;
-						isStart = true;
+		function init() {
+			state.horizonY = canvas.height / 2 + CONFIG.horizonOffset;
+			state.canvasHeight = canvas.height;
+			
+			for (let img in images) {
+				images[img].onload = () => {
+					loadedCount++;
+					if (loadedCount === totalImages) {
+						blocks = initAllBlocks(state, blocks, CONFIG, MAP_LAYOUT, ORE_LAYOUT, BLOCK_TYPES, BLOCK_TYPE_MAP);
+						initPlayerPosition();
+						requestAnimationFrame(gameLoop);
 					}
-                    
-					//加入新地块
-                    blocks.push({
-                        x, y,
-                        width: CONFIG.blockSize,
-                        height: CONFIG.blockSize,
-                        row, col,
-                        globalRow: row,
-                        centerX: x + CONFIG.blockSize / 2,
-                        centerY: y + CONFIG.blockSize / 2,
-                        type: blockType,
-                        state: initialState,
-                        progress: 0,
-                        visible: row < CONFIG.initialVisibleRows,
-                        isStone: isStone,
-                        isEnd: isEnd,
-                        isStart: isStart,
-                        ore: oreType,
-                        oreCollected: false
-                    });
-                }
-            }
-        }
+				};
+			}
+		}
 
         function initPlayerPosition() {
             const totalHeight = images.head1.height + images.body.height;
@@ -207,779 +156,72 @@
             state.maxVisibleRow = CONFIG.initialVisibleRows - 1;
         }
 
-        // ==================== 矿石收集 在此设置矿石检测位置/音效标签 同步修改 ====================
-        function checkOreCollection() {
-            const playerRect = getPlayerCollisionBox();
-            
-            for (let block of blocks) {
-                if (!block.visible) continue;
-                if (block.ore === 0 || block.oreCollected) continue;
-                
-                const oreRect = {
-                    x: block.centerX - 20,
-                    y: block.centerY - 20,
-                    width: 40,
-                    height: 40
-                };
-                
-                if (rectCollision(playerRect, oreRect)) {
-                    block.oreCollected = true;
-					// 播放获得矿石音效
-                    AudioManager.playChin();
-					// 动态获取矿石对应的 key
-					const oreKey = ORES[block.ore]?.key;
-					if (oreKey && state.inventory[oreKey] !== undefined) {
-						state.inventory[oreKey]++;
-						// 显示矿石收集提示（在玩家位置）
-						const oreData = ORES[block.ore];
-						showOreNotification(
-							`${oreData.name} +1`,
-							state.player.headX + state.currentHeadImage.width / 2,
-							state.player.bodyY + 100
-						);
-					}
-                }
+        // ==================== 能量生命值系统 ====================
+        function updateOxygenAndHp() {
+            if (state.player.depth === 0) {
+                state.oxygen = OXYGEN_CONFIG.surfaceValue;
+                return;
             }
-        }
-
-        // ==================== 炸弹功能 ====================
-        function useBomb() {
-            if (state.items.bomb <= 0) return;
-            if (state.bombActive) return;
-            state.items.bomb--;
-			AudioManager.playUse();
             
-            // 创建炸弹
-            const bombX = state.player.headX + state.currentHeadImage.width / 2 - 15;
-            const bombY = state.player.headY - 30;
+            let consumeRate = OXYGEN_CONFIG.consumeRates[0][1];
             
-            state.bombActive = {
-                x: bombX,
-                y: bombY,
-                vy: 0,
-                timer: 120,
-                animationFrame: 0
-            };
-        }
-
-        function updateBomb() {
-            if (!state.bombActive) return;
-            
-            const bomb = state.bombActive;
-            
-            // 应用重力
-            bomb.vy += CONFIG.gravity;
-            bomb.y += bomb.vy;
-            
-            // 地块碰撞检测
-            const bombRect = {
-                x: bomb.x,
-                y: bomb.y,
-                width: 30,
-                height: 30
-            };
-            
-            for (let block of blocks) {
-                if (block.state === 3) continue;
-                if (!block.visible) continue;
-                
-                const blockRect = {
-                    x: block.x,
-                    y: block.y,
-                    width: block.width,
-                    height: block.height
-                };
-                
-                if (rectCollision(bombRect, blockRect)) {
-                    bomb.y = block.y - 30;
-                    bomb.vy = 0;
+            for (let i = OXYGEN_CONFIG.consumeRates.length - 1; i >= 0; i--) {
+                const [depthThreshold, rate] = OXYGEN_CONFIG.consumeRates[i];
+                if (state.player.depth >= depthThreshold) {
+                    consumeRate = rate;
                     break;
                 }
             }
             
-            bomb.timer--;
-            bomb.animationFrame = (bomb.animationFrame + 1) % 30;
+            state.oxygen = Math.max(0, state.oxygen - consumeRate);
             
-            if (bomb.timer <= 0) {
-				AudioManager.playBoom();
-                explodeBomb();
-            }
-        }
-
-        function explodeBomb() {
-            if (!state.bombActive) return;
-            
-            const bomb = state.bombActive;
-            
-            // 计算炸弹所在的行和列
-            const bombCenterX = bomb.x + 15;
-            const bombCenterY = bomb.y + 15;
-            
-            let bombRow = -1, bombCol = -1;
-            for (let block of blocks) {
-                if (bombCenterX >= block.x && bombCenterX <= block.x + block.width &&
-                    bombCenterY >= block.y && bombCenterY <= block.y + block.height) {
-                    bombRow = block.globalRow;
-                    bombCol = block.col;
-                    break;
+            if (state.oxygen === 0) {
+                if (!state.hpDamageTimer) {
+                    state.hpDamageTimer = 0;
                 }
-            }
-            
-            if (bombRow !== -1 && bombCol !== -1) {
-                const directions = [
-                    [-1, -1], [-1, 0], [-1, 1],
-                    [0, -1],           [0, 1],
-                    [1, -1],  [1, 0],  [1, 1]
-                ];
+                state.hpDamageTimer++;
                 
-                for (let [dr, dc] of directions) {
-                    const targetRow = bombRow + dr;
-                    const targetCol = bombCol + dc;
+                if (state.hpDamageTimer >= 60) {
+                    state.hp = Math.max(0, state.hp - OXYGEN_CONFIG.iteminti.consumeWhenOxygenZero);
+                    state.hpDamageTimer = 0;
                     
-                    for (let block of blocks) {
-                        if (block.globalRow === targetRow && block.col === targetCol) {
-                            if (block.isStone || block.state === 1 || block.state === 2) {
-                                block.state = 3;
-                                block.isStone = false;
-                                block.isEnd = false;
-                            }
-                            break;
-                        }
+                    if (state.hp <= 0) {
+                        console.log('游戏结束');
                     }
                 }
-            }
-            
-            state.bombExplosions.push({
-                x: bomb.x - 10,
-                y: bomb.y - 20,
-                frame: 0,
-                timer: 15
-            });
-            
-            state.bombActive = null;
-        }
-
-        function updateExplosions() {
-            for (let i = state.bombExplosions.length - 1; i >= 0; i--) {
-                const explosion = state.bombExplosions[i];
-                explosion.timer--;
-                
-                if (explosion.timer <= 0) {
-                    explosion.frame++;
-                    explosion.timer = 15;
-                    
-                    if (explosion.frame >= 3) {
-                        state.bombExplosions.splice(i, 1);
-                    }
-                }
-            }
-        }
-
-        // ==================== 绘制炸弹和爆炸 ====================
-        function drawBomb() {
-            if (state.bombActive) {
-                const bomb = state.bombActive;
-                const screenY = bomb.y - state.cameraOffset;
-                ctx.drawImage(images.item001, bomb.x, screenY);
-            }
-        }
-
-        function drawExplosions() {
-            for (let explosion of state.bombExplosions) {
-                const screenY = explosion.y - state.cameraOffset;
-                let boomImage;
-                
-                switch(explosion.frame) {
-                    case 0: boomImage = images.boom1; break;
-                    case 1: boomImage = images.boom2; break;
-                    case 2: boomImage = images.boom3; break;
-                    default: continue;
-                }
-                
-                ctx.drawImage(boomImage, explosion.x, screenY);
-            }
-        }
-
-		// ==================== 能量生命值系统 记得加入游戏结束功能 ====================
-		function updateOxygenAndHp() {
-			// 如果游戏结束
-			// if (state.gameOver) return;
-			
-			// 判断玩家是否在地表（深度为0）
-			if (state.player.depth === 0) {
-				state.oxygen = OXYGEN_CONFIG.surfaceValue;
-				return;
-			}
-			
-			// 根据深度确定氧气消耗速度
-			let consumeRate = OXYGEN_CONFIG.consumeRates[0][1]; // 消耗速度在配置文件
-			
-			for (let i = OXYGEN_CONFIG.consumeRates.length - 1; i >= 0; i--) {
-				const [depthThreshold, rate] = OXYGEN_CONFIG.consumeRates[i];
-				if (state.player.depth >= depthThreshold) {
-					consumeRate = rate;
-					break;
-				}
-			}
-			
-			// 消耗氧气
-			state.oxygen = Math.max(0, state.oxygen - consumeRate);
-			
-			// 如果氧气为0，每秒扣血
-			if (state.oxygen === 0) {
-				// 每帧检查，但只在实际扣血时计数
-				if (!state.hpDamageTimer) {
-					state.hpDamageTimer = 0;
-				}
-				state.hpDamageTimer++;
-				
-				// 60帧约为1秒
-				if (state.hpDamageTimer >= 60) {
-					state.hp = Math.max(0, state.hp - OXYGEN_CONFIG.iteminti.consumeWhenOxygenZero);
-					state.hpDamageTimer = 0;
-					
-					// 检查游戏结束
-					if (state.hp <= 0) {
-						// 游戏结束逻辑（先空着）
-						// state.gameOver = true;
-						console.log('游戏结束');
-					}
-				}
-			} else {
-				state.hpDamageTimer = 0;
-			}
-		}
-
-		// ==================== 新道具需添加对应方法和按键映射 ====================
-		// ==================== 使用道具恢复生命值 在此设置提示文本 ====================
-		function useHCoffee() {
-			if (state.items.h_coffee <= 0) return;
-			state.items.h_coffee--;
-			AudioManager.playUse();
-			state.hp = Math.min(OXYGEN_CONFIG.iteminti.max, state.hp + OXYGEN_CONFIG.iteminti.h_coffee_recover);
-			showNotification(`使用${ITEMS.h_coffee.name}恢复了${OXYGEN_CONFIG.iteminti.h_coffee_recover}点体力`, 'success');
-		}
-		// ==================== 使用道具恢复能量 在此设置提示文本 ====================
-		function useENlp() {
-			if (state.items.e_nlp <= 0) return;
-			state.items.e_nlp--;
-			AudioManager.playUse();
-			state.oxygen = Math.min(OXYGEN_CONFIG.surfaceValue, state.oxygen + OXYGEN_CONFIG.iteminti.e_nlp_recover);
-			showNotification(`使用${ITEMS.e_nlp.name}恢复了${OXYGEN_CONFIG.iteminti.e_nlp_recover}点能量`, 'success');
-		}
-		function useECdb() {
-			if (state.items.e_cdb <= 0) return;
-			state.items.e_cdb--;
-			AudioManager.playUse();
-			state.oxygen = Math.min(OXYGEN_CONFIG.surfaceValue, state.oxygen + OXYGEN_CONFIG.iteminti.e_cdb_recover);
-			showNotification(`使用${ITEMS.e_cdb.name}恢复了${OXYGEN_CONFIG.iteminti.e_cdb_recover}点能量`, 'success');
-		}
-
-		// ==================== 道具翻页 ====================
-		function prevItemPage() {
-			if (state.currentItemPage > 0) {
-				state.currentItemPage--;
-				AudioManager.playBubu();
-			}
-		}
-		function nextItemPage() {
-			if (state.currentItemPage < state.maxItemPage) {
-				state.currentItemPage++;
-				AudioManager.playBubu();
-			}
-		}
-
-        // ==================== 商店功能 ====================
-        function checkShopProximity() {
-            if (!state.shop.shopY) {
-                state.shop.shopY = state.horizonY - 103;
-            }
-            
-            const playerCenterX = state.player.bodyX + state.currentBodyImage.width / 2;
-            const shopCenterX = state.shop.shopX + state.shop.shopWidth / 2;
-            const distance = Math.abs(playerCenterX - shopCenterX);
-            
-            if (distance < 100 && !state.shop.isOpen) {
-                return true;
-            }
-            return false;
-        }
-
-        function toggleShop() {
-            if (!state.shop.isOpen) {
-                const playerCenterX = state.player.bodyX + state.currentBodyImage.width / 2;
-                const shopCenterX = state.shop.shopX + state.shop.shopWidth / 2;
-                const distance = Math.abs(playerCenterX - shopCenterX);
-                
-                if (distance < 100) {
-                    state.shop.isOpen = true;
-					state.shop.animTarget = 1;
-                    state.shop.scrollOffset = 0;
-                    state.shop.selectedOre = null;
-                    state.shop.selectedItem = null;
-					AudioManager.playOpen();
-                }
             } else {
-                state.shop.isOpen = false;
-				state.shop.animTarget = 0;
-				AudioManager.playUse();
+                state.hpDamageTimer = 0;
             }
         }
-
-		function sellOre() {
-			if (!state.shop.selectedOre) return;
-			
-			const oreType = state.shop.selectedOre.type;
-			const oreData = ORES[oreType];
-			if (!oreData) return;
-			
-			const oreKey = oreData.key;
-			const price = oreData.price;
-			const oreName = oreData.name;
-			
-			if (state.inventory[oreKey] > 0) {
-				state.inventory[oreKey]--;
-				state.totalGold += price;
-				AudioManager.playChin();
-				showNotification(`出售${oreName}获得了${price}金币`, 'success');
-			}
-			
-			if (state.inventory[oreKey] === 0) {
-				state.shop.selectedOre = null;
-			}
-		}
-
-		//在此设置提示文本
-        function buyItem() {
-            if (!state.shop.selectedItem) return;
-            
-            const item = state.shop.shopItems[state.shop.selectedItem.index];
-            if (state.totalGold >= item.price) {
-                state.totalGold -= item.price;
-                
-                if (state.items[item.id] !== undefined) {
-                    state.items[item.id]++;
-                }
-                AudioManager.playChin();
-                showNotification(`购买${item.name}支付了${item.price}金币`, 'success');
-            } else {
-				AudioManager.playBubu();
-                showNotification('没有足够的钱', 'error');
-            }
-        }
-
-        function handleShopScroll(delta) {
-            if (!state.shop.isOpen) return;
-            
-            state.shop.scrollOffset += delta;
-            state.shop.scrollOffset = Math.max(0, Math.min(state.shop.scrollOffset, state.shop.maxScroll));
-        }
-
-        // ==================== 绘制商店界面 在此设置样式 ====================
-        function drawShop() {
-            if (!state.shop.isOpen && state.shop.animScale === 0) return;  // 完全关闭时不绘制
-            
-			const shopX = canvas.width / 2 - 450;
-			const shopY = canvas.height / 2 - 350;
-			const shopWidth = 900;
-			const shopHeight = 700;
-			const r = 20;
-
-		// 应用缩放动画
-			ctx.save();
-			const scale = state.shop.animScale;
-			if (scale < 1) {
-				const centerX = canvas.width / 2;
-				const centerY = canvas.height / 2;
-				ctx.translate(centerX, centerY);
-				ctx.scale(scale, scale);
-				ctx.translate(-centerX, -centerY);
-			}
-			
-			function drawRoundedRect(x, y, w, h, radius) {
-				ctx.beginPath();
-				ctx.moveTo(x + radius, y);
-				ctx.lineTo(x + w - radius, y);
-				ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
-				ctx.lineTo(x + w, y + h - radius);
-				ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
-				ctx.lineTo(x + radius, y + h);
-				ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
-				ctx.lineTo(x, y + radius);
-				ctx.quadraticCurveTo(x, y, x + radius, y);
-				ctx.closePath();
-			}
-
-			// 绘制商店背景
-			ctx.fillStyle = 'rgba(186, 186, 186, 0.8)';
-			drawRoundedRect(shopX, shopY, shopWidth, shopHeight, r);
-			ctx.fill();
-
-			// 绘制边框
-			ctx.strokeStyle = '#ffffff';
-			ctx.lineWidth = 4;
-			drawRoundedRect(shopX + 2, shopY + 2, shopWidth - 4, shopHeight - 4, r - 2);
-			ctx.stroke();
-
-			ctx.strokeStyle = '#f0227d';
-			ctx.lineWidth = 4;
-			drawRoundedRect(shopX + 6, shopY + 6, shopWidth - 12, shopHeight - 12, r - 6);
-			ctx.stroke();
-
-			ctx.strokeStyle = '#ffffff';
-			ctx.lineWidth = 4;
-			drawRoundedRect(shopX + 10, shopY + 10, shopWidth - 20, shopHeight - 20, r - 10);
-			ctx.stroke();
-			
-			//=== 商店标题 ===
-
-			ctx.font = 'bold 48px "Arial", "Arial", monospace';
-			ctx.textAlign = 'center';
-
-			ctx.strokeStyle = '#f0227d';
-			ctx.lineWidth = 8;
-			ctx.strokeText('R i N G', canvas.width / 2, shopY + 65);
-
-			ctx.fillStyle = '#ffffff';
-			ctx.fillText('R i N G', canvas.width / 2, shopY + 65);
-
-			ctx.textAlign = 'left';
-            
-			//=== 分隔线 ===
-            ctx.strokeStyle = '#f0227d';
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.moveTo(shopX + shopWidth / 2, shopY + 90);
-            ctx.lineTo(shopX + shopWidth / 2, shopY + shopHeight - 80);
-            ctx.stroke();
-			
-			//=== 物品 ===
-            ctx.font = 'bold 32px "幼圆", "黑体", monospace';
-			ctx.strokeStyle = '#f0227d';
-			ctx.lineWidth = 6;
-			ctx.strokeText('所持物品', shopX + 40, shopY + 120);
-			ctx.fillStyle = '#ffffff';
-			ctx.fillText('所持物品', shopX + 40, shopY + 120);
-			            
-            ctx.strokeStyle = '#f0227d';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(shopX + 40, shopY + 140);
-            ctx.lineTo(shopX + shopWidth / 2 - 40, shopY + 140);
-            ctx.stroke();
-            
-			//=== 物品卡片 ===
-            const gridStartX = shopX + 60;
-            const gridStartY = shopY + 160;
-            const gridSize = 80;
-            const cellPadding = 20;
-            const cardWidth = gridSize + 20;
-            const cardHeight = gridSize + 50;
-            const verticalSpacing = 20;
-			
-
-			// 滚动相关 添加裁剪区域
-			ctx.save();
-			ctx.beginPath();
-			ctx.rect(shopX + 10, shopY + 150, shopWidth - 40, shopHeight - 250);
-			ctx.clip();
-
-			// 过滤出有数量的矿石
-			const availableOres = [];
-			for (let type in ORES) {
-				const oreType = parseInt(type);
-				const oreData = ORES[oreType];
-				const count = state.inventory[oreData.key] || 0;
-				
-				if (count > 0) {
-					availableOres.push({
-						type: oreType,
-						name: oreData.name,
-						price: oreData.price,
-						count: count,
-						icon: images[oreData.image]
-					});
-				}
-			}
-
-            for (let i = 0; i < availableOres.length; i++) {
-				const ore = availableOres[i];
-				const x = gridStartX + (i % 3) * (cardWidth + cellPadding);
-				const y = gridStartY + Math.floor(i / 3) * (cardHeight + verticalSpacing) - state.shop.scrollOffset;
-				const cardR = 10;
-
-				// 绘制卡片背景
-				ctx.fillStyle = '#bababa';
-				drawRoundedRect(x - 5, y - 5, cardWidth, cardHeight, cardR);
-				ctx.fill();
-
-				// 绘制卡片边框
-				ctx.strokeStyle = '#ffffff';
-				ctx.lineWidth = 6;
-				drawRoundedRect(x - 5, y - 5, cardWidth, cardHeight, cardR);
-				ctx.stroke();
-
-				ctx.strokeStyle = state.shop.selectedOre && state.shop.selectedOre.type === ore.type ? '#FFD700' : '#000000';
-				ctx.lineWidth = state.shop.selectedOre && state.shop.selectedOre.type === ore.type ? 3 : 2;
-				drawRoundedRect(x - 5, y - 5, cardWidth, cardHeight, cardR);
-				ctx.stroke();
-
-				//卡片元素
-				const iconX = x + (cardWidth - gridSize) / 2;
-				ctx.drawImage(ore.icon, iconX - 5, y + 5, gridSize, gridSize);
-				
-                ctx.textAlign = 'center';
-				ctx.font = 'bold 14px "幼圆", "黑体", monospace';
-				ctx.strokeStyle = '#000000';
-				ctx.lineWidth = 2;
-				ctx.strokeText(ore.name, x + cardWidth / 2 - 5, y + gridSize + 20);
-				ctx.fillStyle = '#ffffff';
-				ctx.fillText(ore.name, x + cardWidth / 2 - 5, y + gridSize + 20);
-
-                ctx.fillStyle = '#000000';
-                ctx.font = 'bold 12px monospace';
-                ctx.fillText(`x${ore.count}`, x + cardWidth / 2 + 30, y + 10);
-				
-				ctx.fillStyle = '#ff6161';
-                ctx.fillText(`${ore.price}G`, x + cardWidth / 2 - 5, y + gridSize + 38);
-                ctx.textAlign = 'left';
-            }
-            
-			// 滚动相关
-			ctx.restore();
-			
-			//=== 售货机 ===
-            ctx.font = 'bold 32px "幼圆", "黑体", monospace';
-			ctx.strokeStyle = '#f0227d';
-			ctx.lineWidth = 6;
-			ctx.strokeText('售货机', shopX + shopWidth / 2 + 40, shopY + 120);
-			ctx.fillStyle = '#ffffff';
-			ctx.fillText('售货机', shopX + shopWidth / 2 + 40, shopY + 120);
-            
-            ctx.strokeStyle = '#f0227d';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(shopX + shopWidth / 2 + 40, shopY + 140);
-            ctx.lineTo(shopX + shopWidth - 40, shopY + 140);
-            ctx.stroke();
-            //=== 售货机卡片 ===
-            const itemGridStartX = shopX + shopWidth / 2 + 60;
-            const itemGridStartY = shopY + 160;
-			
-			// 滚动相关 添加裁剪区域
-			ctx.save();
-			ctx.beginPath();
-			ctx.rect(shopX + shopWidth / 2 + 10, shopY + 150, shopWidth / 2 - 40, shopHeight - 250);
-			ctx.clip();
-
-            for (let i = 0; i < state.shop.shopItems.length; i++) {
-                const item = state.shop.shopItems[i];
-                const x = itemGridStartX + (i % 3) * (cardWidth + cellPadding);
-                const y = itemGridStartY + Math.floor(i / 3) * (cardHeight + verticalSpacing) - state.shop.scrollOffset;
-                
-				const cardR = 10;
-
-				// 绘制卡片背景
-				ctx.fillStyle = '#bababa';
-				drawRoundedRect(x - 5, y - 5, cardWidth, cardHeight, cardR);
-				ctx.fill();
-
-				// 绘制卡片边框
-				ctx.strokeStyle = '#ffffff';
-				ctx.lineWidth = 6;
-				drawRoundedRect(x - 5, y - 5, cardWidth, cardHeight, cardR);
-				ctx.stroke();
-
-				ctx.strokeStyle = state.shop.selectedItem && state.shop.selectedItem.index === i ? '#FFD700' : '#000000';
-				ctx.lineWidth = state.shop.selectedItem && state.shop.selectedItem.index === i ? 3 : 2;
-				drawRoundedRect(x - 5, y - 5, cardWidth, cardHeight, cardR);
-				ctx.stroke();
-                
-				//卡片元素
-                const iconX = x + (cardWidth - gridSize) / 2;
-                ctx.drawImage(item.icon, iconX - 5, y + 5, gridSize, gridSize);
-                
-                ctx.textAlign = 'center';
-
-				ctx.font = 'bold 14px "幼圆", "黑体", monospace';
-				ctx.strokeStyle = '#000000';
-				ctx.lineWidth = 2;
-				ctx.strokeText(item.name, x + cardWidth / 2 - 5, y + gridSize + 20);
-				ctx.fillStyle = '#ffffff';
-				ctx.fillText(item.name, x + cardWidth / 2 - 5, y + gridSize + 20);
-                
-                ctx.fillStyle = '#ff6161';
-                ctx.font = 'bold 12px monospace';
-                ctx.fillText(`${item.price}G`, x + cardWidth / 2 - 5, y + gridSize + 38);
-                ctx.textAlign = 'left';
-
-            }
-            
-			// 滚动相关
-			ctx.restore();
-			
-			//=== 滚动条 maxScroll代表最大行数 ===
-			const totalOreRows = Math.ceil(availableOres.length / 3);
-			const totalItemRows = Math.ceil(state.shop.shopItems.length / 3);
-			const maxRows = Math.max(totalOreRows, totalItemRows);
-			state.shop.maxScroll = Math.max(0, (maxRows - 3) * (cardHeight + verticalSpacing));
-
-			if (state.shop.maxScroll > 0) {
-				ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-				ctx.fillRect(shopX + shopWidth - 25, shopY + 150, 10, 300);
-				
-				const scrollPercent = state.shop.scrollOffset / state.shop.maxScroll;
-				const thumbHeight = Math.max(40, 300 * (3 / maxRows));
-				const thumbY = shopY + 150 + scrollPercent * (300 - thumbHeight);
-				
-				// 绘制滑块
-				ctx.fillStyle = '#f0227d';
-				ctx.fillRect(shopX + shopWidth - 27, thumbY, 14, thumbHeight);
-				
-				// 绘制滑块边框
-				ctx.strokeStyle = '#ffffff';
-				ctx.lineWidth = 2;
-				ctx.strokeRect(shopX + shopWidth - 27, thumbY, 14, thumbHeight);
-			}
-
-			//=== 商店按钮 ===
-			const buttonY = shopY + shopHeight - 80;
-			const btnR = 10;
-
-			// 出售按钮
-			
-			ctx.strokeStyle = '#ffffff';
-			ctx.lineWidth = 2;
-			drawRoundedRect(shopX + 120, buttonY, 160, 50, btnR);
-			ctx.stroke();
-
-			ctx.strokeStyle = '#000000';
-			ctx.lineWidth = 2;
-			drawRoundedRect(shopX + 122, buttonY + 2, 156, 46, btnR - 1);
-			ctx.stroke();
-
-			ctx.strokeStyle = '#ffffff';
-			ctx.lineWidth = 2;
-			drawRoundedRect(shopX + 124, buttonY + 4, 152, 42, btnR - 2);
-			ctx.stroke();
-
-			ctx.textAlign = 'center';
-			ctx.font = 'bold 24px "幼圆", "黑体", monospace';
-
-			ctx.strokeStyle = '#ffffff';
-			ctx.lineWidth = 4;
-			ctx.strokeText('出 售', shopX + 200, buttonY + 35);
-
-			ctx.fillStyle = '#000000';
-			ctx.fillText('出 售', shopX + 200, buttonY + 35);
-
-			// 购买按钮
-			ctx.strokeStyle = '#ffffff';
-			ctx.lineWidth = 2;
-			drawRoundedRect(shopX + shopWidth / 2 + 120, buttonY, 160, 50, btnR);
-			ctx.stroke();
-
-			ctx.strokeStyle = '#000000';
-			ctx.lineWidth = 2;
-			drawRoundedRect(shopX + shopWidth / 2 + 122, buttonY + 2, 156, 46, btnR - 1);
-			ctx.stroke();
-
-			ctx.strokeStyle = '#ffffff';
-			ctx.lineWidth = 2;
-			drawRoundedRect(shopX + shopWidth / 2 + 124, buttonY + 4, 152, 42, btnR - 2);
-			ctx.stroke();
-
-			ctx.strokeStyle = '#ffffff';
-			ctx.lineWidth = 4;
-			ctx.strokeText('购 买', shopX + shopWidth / 2 + 200, buttonY + 35);
-
-			ctx.fillStyle = '#000000';
-			ctx.fillText('购 买', shopX + shopWidth / 2 + 200, buttonY + 35);
-			ctx.textAlign = 'left';
-        }
-
-        // ==================== 商店交互 ====================
-		function handleShopClick(x, y) {
-			if (!state.shop.isOpen) return;
-			
-			const shopX = canvas.width / 2 - 450;
-			const shopY = canvas.height / 2 - 350;
-			const shopWidth = 900;
-			const shopHeight = 700;
-			const gridSize = 100;
-			
-			const buttonY = shopY + shopHeight - 80;
-			if (x >= shopX + 120 && x <= shopX + 280 && y >= buttonY && y <= buttonY + 50) {
-				sellOre();
-				return;
-			}
-
-			if (x >= shopX + shopWidth / 2 + 120 && x <= shopX + shopWidth / 2 + 280 && 
-				y >= buttonY && y <= buttonY + 50) {
-				buyItem();
-				return;
-			}
-			
-			const gridStartX = shopX + 50;
-			const gridStartY = shopY + 150;
-			
-			// 过滤出有数量的矿石
-			const availableOres = [];
-			for (let type in ORES) {
-				const oreType = parseInt(type);
-				const oreData = ORES[oreType];
-				const count = state.inventory[oreData.key] || 0;
-				
-				if (count > 0) {
-					availableOres.push({ type: oreType, key: oreData.key });
-				}
-			}
-
-			// 检查矿石网格点击
-			for (let i = 0; i < availableOres.length; i++) {
-				const oreX = gridStartX + (i % 3) * (gridSize + 20);
-				const oreY = gridStartY + Math.floor(i / 3) * (gridSize + 40) - state.shop.scrollOffset;
-				
-				if (x >= oreX - 10 && x <= oreX + gridSize + 10 && 
-					y >= oreY - 10 && y <= oreY + gridSize + 40) {
-					const oreData = availableOres[i];
-					
-					if (state.inventory[oreData.key] > 0) {
-						state.shop.selectedOre = { type: oreData.type, index: i };
-						state.shop.selectedItem = null;
-					}
-					return;
-				}
-			}
-			
-			// 检查道具网格点击
-			const itemGridStartX = shopX + shopWidth / 2 + 50;
-			const itemGridStartY = shopY + 150;
-			
-			for (let i = 0; i < state.shop.shopItems.length; i++) {
-				const itemX = itemGridStartX + (i % 3) * (gridSize + 20);
-				const itemY = itemGridStartY + Math.floor(i / 3) * (gridSize + 40) - state.shop.scrollOffset;
-				
-				if (x >= itemX - 10 && x <= itemX + gridSize + 10 && 
-					y >= itemY - 10 && y <= itemY + gridSize + 40) {
-					state.shop.selectedItem = { id: state.shop.shopItems[i].id, index: i };
-					state.shop.selectedOre = null;
-					return;
-				}
-			}
-		}
 
         // ==================== 更新循环 ====================
         function update() {
-			state.maxItemPage = Math.max(0, Math.ceil(state.shop.shopItems.length / 8) - 1);
-			
-		// 更新商店缩放动画
-			if (state.shop.animScale < state.shop.animTarget) {
-				state.shop.animScale = Math.min(state.shop.animScale + state.shop.animSpeed, state.shop.animTarget);
-			} else if (state.shop.animScale > state.shop.animTarget) {
-				state.shop.animScale = Math.max(state.shop.animScale - state.shop.animSpeed, state.shop.animTarget);
-			}
-			
+            state.maxItemPage = Math.max(0, Math.ceil(state.shop.shopItems.length / 8) - 1);
+            
+            // 商店距离检测
+            if (state.shop.isOpen) {
+                const playerCenterX = state.player.bodyX + state.currentBodyImage.width / 2;
+                const playerCenterY = state.player.bodyY + state.currentBodyImage.height / 2;
+                
+                const shopCenterX = state.shop.shopX + state.shop.shopWidth / 2;
+                const shopCenterY = state.shop.shopY + state.shop.shopHeight / 2;
+                
+                const distanceX = Math.abs(playerCenterX - shopCenterX);
+                const distanceY = Math.abs(playerCenterY - shopCenterY);
+                
+                if (distanceX > 100 || distanceY > 100) {
+                    state.shop.isOpen = false;
+                    state.shop.animTarget = 0;
+                }
+            }
+            
+            // 更新商店缩放动画
+            if (state.shop.animScale < state.shop.animTarget) {
+                state.shop.animScale = Math.min(state.shop.animScale + state.shop.animSpeed, state.shop.animTarget);
+            } else if (state.shop.animScale > state.shop.animTarget) {
+                state.shop.animScale = Math.max(state.shop.animScale - state.shop.animSpeed, state.shop.animTarget);
+            }
+            
             updateDrillShake();
 
             if (!state.isDrilling) {
@@ -1002,85 +244,17 @@
             updateBomb();
             updateExplosions();
             updateNotification();
-			updateOxygenAndHp();
-			updateOreNotification();
+            updateOxygenAndHp();
+            updateOreNotification();
+            
             if (state.isDrilling && state.player.grounded) {
                 performMining();
             }
             
             checkAndStartDrilling();
-            
-            if (state.shop.isOpen) {
-                const playerCenterX = state.player.bodyX + state.currentBodyImage.width / 2;
-                const playerCenterY = state.player.bodyY + state.currentBodyImage.height / 2;
-                
-                const shopCenterX = state.shop.shopX + state.shop.shopWidth / 2;
-                const shopCenterY = state.shop.shopY + state.shop.shopHeight / 2;
-                
-                const distanceX = Math.abs(playerCenterX - shopCenterX);
-                const distanceY = Math.abs(playerCenterY - shopCenterY);
-                
-                if (distanceX > 100 || distanceY > 100) {
-                    state.shop.isOpen = false;
-                }
-            }
         }
 
-        // ==================== 绘制地块 在此设置新地块====================
-        function drawBlocks() {
-            for (let block of blocks) {
-                if (!block.visible) continue;
-                
-                const screenY = block.y - state.cameraOffset;
-                if (screenY + block.height < 0 || screenY > canvas.height) continue;
-                
-                let image;
-				// 加入新地块
-                if (block.isEnd) {
-                    image = images.dikuaiEnd;
-                } else if (block.isStone) {
-                    image = images.dikuai4;
-                }  else if (block.isStart) {
-					switch(block.state) {
-						case 1: image = images.dikuaiStart1; break;
-						case 2: image = images.dikuaiStart2; break;
-						case 3: image = images.dikuaiStart3; break;
-						default: image = images.dikuaiStart1;
-					}
-				} else {
-                    switch(block.state) {
-                        case 1: image = images.dikuai1; break;
-                        case 2: image = images.dikuai2; break;
-                        case 3: image = images.dikuai3; break;
-                        default: image = images.dikuai1;
-                    }
-                }
-                ctx.drawImage(image, block.x, screenY, CONFIG.blockSize, CONFIG.blockSize);
-            }
-        }
-
-        // ==================== 绘制矿石 在此设置矿石位置 同步修改 ====================
-        function drawOres() {
-            for (let block of blocks) {
-                if (!block.visible) continue;
-                if (block.ore === 0 || block.oreCollected) continue;
-                
-                const screenY = block.centerY - state.cameraOffset - 20;
-                if (screenY + 40 < 0 || screenY > canvas.height) continue;
-                
-                let oreImage;
-                switch(block.ore) {
-                    case 1: oreImage = images.k001; break;
-                    case 2: oreImage = images.k002; break;
-                    case 3: oreImage = images.k003; break;
-                    default: continue;
-                }
-                
-                ctx.drawImage(oreImage, block.centerX - 20, screenY, 40, 40);
-            }
-        }
-
-        // ==================== 绘制画面 在此设置绘制参数 显示信息道具栏等 ====================
+        // ==================== 绘制画面 ====================
         function draw() {
             ctx.save();
             
@@ -1090,33 +264,32 @@
             
             ctx.drawImage(images.bg, 0, 0, canvas.width, canvas.height);
 
-            drawBlocks();
+            drawBlocks(blocks, ctx, images, state, CONFIG);
             drawOres();
             drawBomb();
             drawExplosions();
 
-			//商店
+            // 商店
             const shopScreenY = state.shop.shopY - state.cameraOffset;
-            ctx.drawImage(images.shop, state.shop.shopX, shopScreenY,state.shop.shopWidth,state.shop.shopHeight);
+            ctx.drawImage(images.shop, state.shop.shopX, shopScreenY, state.shop.shopWidth, state.shop.shopHeight);
 
-			if (checkShopProximity() && !state.shop.isOpen) {
-				ctx.font = 'bold 16px "幼圆", "黑体", monospace';
-				ctx.textAlign = 'center';
-				
-				// 粉色描边
-				ctx.strokeStyle = '#000000';
-				ctx.lineWidth = 3;
-				ctx.strokeText('[ F ] 进入', state.shop.shopX + 70, shopScreenY - 10);
-				
-				// 白色填充
-				ctx.fillStyle = '#ffffff';
-				ctx.fillText('[ F ] 进入', state.shop.shopX + 70, shopScreenY - 10);
-				
-				ctx.textAlign = 'left';
-			}
-			// 绘制装饰物
-			const decorScreenY = state.decor.y - state.cameraOffset;
-			ctx.drawImage(state.decor.image, state.decor.x, decorScreenY, state.decor.width, state.decor.height);
+            if (checkShopProximity() && !state.shop.isOpen) {
+                ctx.font = 'bold 16px "幼圆", "黑体", monospace';
+                ctx.textAlign = 'center';
+                
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3;
+                ctx.strokeText('[ F ] 进入', state.shop.shopX + 70, shopScreenY - 10);
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText('[ F ] 进入', state.shop.shopX + 70, shopScreenY - 10);
+                
+                ctx.textAlign = 'left';
+            }
+            
+            // 绘制装饰物
+            const decorScreenY = state.decor.y - state.cameraOffset;
+            ctx.drawImage(state.decor.image, state.decor.x, decorScreenY, state.decor.width, state.decor.height);
 
             if (state.isFlying) {
                 ctx.drawImage(images.fire, state.player.headX, state.player.headY - state.cameraOffset);
@@ -1153,128 +326,41 @@
                 }
             }
 
-			// 显示深度、金币
-			ctx.font = 'bold 24px "幼圆", "黑体", monospace';
-			ctx.fillStyle = '#ffffff';
-			ctx.fillText(`地下深度 ${state.player.depth} 米`, 20, 40);
-			ctx.fillText(`金币持有 ${state.totalGold} G`, 20, 80);
+            // 显示深度、金币
+            ctx.font = 'bold 24px "幼圆", "黑体", monospace';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(`地下深度 ${state.player.depth} 米`, 20, 40);
+            ctx.fillText(`金币持有 ${state.totalGold} G`, 20, 80);
 
-			// 显示能量生命值
+			 // 显示进度条
 			const gameIconSize = 50;
 			const gameIconX = 20;
 			const game1IconY = 100;
 			const game2IconY = 150;
 			const barWidth = 200;
 			const barHeight = 20;
-			const barX = gameIconX + gameIconSize + 10;
-			const barY1 = game1IconY + (gameIconSize - barHeight) / 2;
-			const barY2 = game2IconY + (gameIconSize - barHeight) / 2;
 
-			// 绘制能量图标
-			ctx.drawImage(images.gameitem01, gameIconX, game1IconY, gameIconSize, gameIconSize);
-			// 进度条背景
-			ctx.strokeStyle = '#000000';
-			ctx.lineWidth = 2;
-			ctx.strokeRect(barX, barY1, barWidth, barHeight);
-			// 进度条填充
-			const oxygenPercent = Math.min(1, Math.max(0, state.oxygen / 100));
-			ctx.fillStyle = '#00FFFF';
-			ctx.fillRect(barX, barY1, barWidth * oxygenPercent, barHeight);
-			// 进度条描边
-			ctx.strokeStyle = '#000000';
-			ctx.lineWidth = 2;
-			ctx.strokeRect(barX, barY1, barWidth, barHeight);
-
-			// 绘制生命值图标
-			ctx.drawImage(images.gameitem02, gameIconX, game2IconY, gameIconSize, gameIconSize);
-			// 进度条背景
-			ctx.strokeStyle = '#000000';
-			ctx.lineWidth = 2;
-			ctx.strokeRect(barX, barY2, barWidth, barHeight);
-			// 进度条填充
-			const hpPercent = Math.min(1, Math.max(0, state.hp / 100));
-			ctx.fillStyle = '#FF4444';
-			ctx.fillRect(barX, barY2, barWidth * hpPercent, barHeight);
-			// 进度条描边
-			ctx.strokeStyle = '#000000';
-			ctx.lineWidth = 2;
-			ctx.strokeRect(barX, barY2, barWidth, barHeight);
+			drawOxygenBar(gameIconX, game1IconY, gameIconSize, state.oxygen, barWidth, barHeight);
+			drawHealthBar(gameIconX, game2IconY, gameIconSize, state.hp, barWidth, barHeight);
 			
-			// ==================== 绘制道具栏 ====================
+			 // 绘制道具栏
 			const startX = 480;
 			const startY = 10;
 			const cellSize = 40;
-			const cols = 8; // 固定每行8列
+			const cols = 8;
 			const padding = 3;
 
-			// 绘制翻页控件
-			const pageCtrlX = startX - 40;
-			const pageCtrlY = startY + cellSize / 2 - 20;
-			const triangleSize = 10;
-			// 上三角
-			ctx.fillStyle = state.currentItemPage > 0 ? '#f0227d' : '#808080';
-			ctx.beginPath();
-			ctx.moveTo(pageCtrlX + triangleSize, pageCtrlY);
-			ctx.lineTo(pageCtrlX + triangleSize * 2, pageCtrlY + triangleSize);
-			ctx.lineTo(pageCtrlX, pageCtrlY + triangleSize);
-			ctx.closePath();
-			ctx.fill();
-			// 页码
-			ctx.fillStyle = '#ffffff';
-			ctx.font = 'bold 14px "幼圆", "黑体", monospace';
-			ctx.textAlign = 'center';
-			ctx.fillText(`${state.currentItemPage + 1}`, pageCtrlX + triangleSize, pageCtrlY + triangleSize * 3-3);
-			// 下三角
-			ctx.fillStyle = state.currentItemPage < state.maxItemPage ? '#f0227d' : '#808080';
-			ctx.beginPath();
-			ctx.moveTo(pageCtrlX + triangleSize, pageCtrlY + triangleSize * 4 + 5);
-			ctx.lineTo(pageCtrlX + triangleSize * 2, pageCtrlY + triangleSize * 3 + 5);
-			ctx.lineTo(pageCtrlX, pageCtrlY + triangleSize * 3 + 5);
-			ctx.closePath();
-			ctx.fill();
-
-			// 绘制当前页格子
-			for (let col = 0; col < cols; col++) {
-				const x = startX + col * (cellSize + padding);
-				const y = startY;
-				
-				// 绘制格子边框
-				ctx.strokeStyle = '#000000';
-				ctx.lineWidth = 2;
-				ctx.strokeRect(x, y, cellSize, cellSize);
-				
-				// 计算当前格子的道具索引
-				const index = state.currentItemPage * cols + col;
-				
-				// 如果该格子有道具，则绘制图标和数量
-				if (index < state.shop.shopItems.length) {
-					const item = state.shop.shopItems[index];
-					const count = state.items[item.id] || 0;
-					
-					if (item.icon) {
-						ctx.drawImage(item.icon, x + 5, y + 5, cellSize - 10, cellSize - 10);
-					}
-					
-					ctx.fillStyle = '#ffffff';
-					ctx.font = 'bold 14px monospace';
-					ctx.textAlign = 'center';
-					ctx.fillText(`x${count}`, x + cellSize / 2 + 5, y + cellSize - 5);
-				}
-				
-				// 绘制数字快捷键提示
-				ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-				ctx.font = 'bold 12px monospace';
-				ctx.textAlign = 'left';
-				ctx.fillText(`${col + 1}`, x + 2, y + 15);
-			}
-			ctx.textAlign = 'left';
-			
+			drawItemBar(
+				startX, startY, cellSize, cols, padding,
+				state.currentItemPage, state.maxItemPage,
+				state.shop.shopItems, state.items
+			);
+            
             drawShop();
             drawNotification();
-			drawOreNotification();
-			
-			ctx.restore();
-
+            drawOreNotification();
+            
+            ctx.restore();
         }
 
         function gameLoop() {
@@ -1283,70 +369,65 @@
             requestAnimationFrame(gameLoop);
         }
 
-		// ==================== 键盘事件 ====================
-		window.addEventListener('keydown', (e) => {
-			AudioManager.startBgm();
-
-			e.preventDefault();
-			// 数字键 1-8 使用当前页对应格子的道具
-			if (e.key >= '1' && e.key <= '8') {
-				const slotIndex = parseInt(e.key) - 1; // 0-7
-				const itemIndex = state.currentItemPage * 8 + slotIndex;
-				
-				if (itemIndex < state.shop.shopItems.length) {
-					const item = state.shop.shopItems[itemIndex];
-					
-					// 在此设置新道具使用
-					if (item.id === 'bomb') {
-						useBomb();
-					} else if (item.id === 'h_coffee') {
-						useHCoffee();
-					} else if (item.id === 'e_nlp') {
-						useENlp();
-					} else if (item.id === 'e_cdb') {
-						useECdb();
-					}
-				}
-				return;
-			}
-			
-			// 翻页键
-			if (e.key === 'q' || e.key === 'Q') {
-				prevItemPage();
-				return;
-			}
-			if (e.key === 'e' || e.key === 'E') {
-				nextItemPage();
-				return;
-			}
-			
-			// 互动键
-			if (e.key === 'a' || e.key === 'A') {
-				state.aPressed = true;
-				checkAndStartDrilling();
-				return;
-			}
-			if (e.key === 'f' || e.key === 'F') {  // F键打开商店
-				toggleShop();
-				return;
-			}
-			
-			// 方向键
-			switch(e.key) {
-				case 'ArrowUp': 
-					startFlying();
-					break;
-				case 'ArrowDown': 
-					startMovingDown();
-					break;
-				case 'ArrowLeft': 
-					startMovingLeft();
-					break;
-				case 'ArrowRight': 
-					startMovingRight();
-					break;
-			}
-		});
+        // ==================== 键盘事件 ====================
+        window.addEventListener('keydown', (e) => {
+            AudioManager.startBgm();
+            e.preventDefault();
+            
+            if (e.key >= '1' && e.key <= '8') {
+                const slotIndex = parseInt(e.key) - 1;
+                const itemIndex = state.currentItemPage * 8 + slotIndex;
+                
+                if (itemIndex < state.shop.shopItems.length) {
+                    const item = state.shop.shopItems[itemIndex];
+                    
+                    if (item.id === 'bomb') {
+                        useBomb();
+                    } else if (item.id === 'h_coffee') {
+                        useHCoffee();
+                    } else if (item.id === 'e_nlp') {
+                        useENlp();
+                    } else if (item.id === 'e_cdb') {
+                        useECdb();
+                    }
+                }
+                return;
+            }
+            
+            if (e.key === 'q' || e.key === 'Q') {
+                prevItemPage();
+                return;
+            }
+            if (e.key === 'e' || e.key === 'E') {
+                nextItemPage();
+                return;
+            }
+            
+            if (e.key === 'a' || e.key === 'A') {
+                state.aPressed = true;
+                checkAndStartDrilling();
+                return;
+            }
+            if (e.key === 'f' || e.key === 'F') {
+                toggleShop();
+                return;
+            }
+            
+            switch(e.key) {
+                case 'ArrowUp': 
+                    startFlying();
+                    break;
+                case 'ArrowDown': 
+                    startMovingDown();
+                    break;
+                case 'ArrowLeft': 
+                    startMovingLeft();
+                    break;
+                case 'ArrowRight': 
+                    startMovingRight();
+                    break;
+            }
+        });
 
         window.addEventListener('keyup', (e) => {
             e.preventDefault();
@@ -1381,8 +462,7 @@
         });
         
         canvas.addEventListener('click', (e) => {
-			// 用户点击时启动背景音乐
-			AudioManager.startBgm();
+            AudioManager.startBgm();
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
@@ -1390,51 +470,48 @@
         });
         
         init();
-		// ==================== 禁用右键菜单 ====================
-		document.addEventListener('contextmenu', function(e) {
-			e.preventDefault(); // 阻止右键菜单弹出
-		});
-		// ==================== 鼠标特效 ====================
-		document.addEventListener('click', function(e) {
-			const colors = ['#FFD700', '#f0227d', '#ffffff', '#FFA500', '#FF69B4', '#00FFFF', '#FF4500', '#9370DB', '#32CD32', '#FF1493'];
-			const starCount = Math.floor(Math.random() * 3) + 3; // 随机3-5颗星星
-			
-			for (let i = 0; i < starCount; i++) {
-				setTimeout(() => {
-					const star = document.createElement('div');
-					star.className = 'click-star';
-					
-					// 随机颜色
-					const randomColor = colors[Math.floor(Math.random() * colors.length)];
-					star.style.color = randomColor;
-					
-					// 随机大小
-					const size = Math.random() * 15 + 20;
-					star.style.fontSize = size + 'px';
-					
-					// 随机散开方向和距离
-					const angle = Math.random() * Math.PI * 2;
-					const distance = Math.random() * 100 + 20; // 20-120像素
-					const tx = Math.cos(angle) * distance;
-					const ty = Math.sin(angle) * distance;
-					star.style.setProperty('--tx', tx + 'px');
-					star.style.setProperty('--ty', ty + 'px');
-					
-					// 设置位置（点击点为中心）
-					star.style.left = (e.clientX - size/2) + 'px';
-					star.style.top = (e.clientY - size/2) + 'px';
-					
-					// 星星符号
-					star.textContent = '★';
-					
-					document.body.appendChild(star);
-					
-					setTimeout(() => {
-						star.remove();
-					}, 600);
-				}, i * 30); // 错开出现时间
-			}
-		});
+        
+        // ==================== 禁用右键菜单 ====================
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+        
+        // ==================== 鼠标特效 ====================
+        document.addEventListener('click', function(e) {
+            const colors = ['#FFD700', '#f0227d', '#ffffff', '#FFA500', '#FF69B4', '#00FFFF', '#FF4500', '#9370DB', '#32CD32', '#FF1493'];
+            const starCount = Math.floor(Math.random() * 3) + 3;
+            
+            for (let i = 0; i < starCount; i++) {
+                setTimeout(() => {
+                    const star = document.createElement('div');
+                    star.className = 'click-star';
+                    
+                    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                    star.style.color = randomColor;
+                    
+                    const size = Math.random() * 15 + 20;
+                    star.style.fontSize = size + 'px';
+                    
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = Math.random() * 100 + 20;
+                    const tx = Math.cos(angle) * distance;
+                    const ty = Math.sin(angle) * distance;
+                    star.style.setProperty('--tx', tx + 'px');
+                    star.style.setProperty('--ty', ty + 'px');
+                    
+                    star.style.left = (e.clientX - size/2) + 'px';
+                    star.style.top = (e.clientY - size/2) + 'px';
+                    
+                    star.textContent = '★';
+                    
+                    document.body.appendChild(star);
+                    
+                    setTimeout(() => {
+                        star.remove();
+                    }, 600);
+                }, i * 30);
+            }
+        });
     </script>
 </body>
 </html>

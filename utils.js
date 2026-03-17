@@ -273,7 +273,7 @@ function performMining() {
     
     const collidedBlock = checkDrillCollision(state.drillDirection);
     if (collidedBlock) {
-        mineBlock(collidedBlock);
+        mineBlock(collidedBlock, state, CONFIG, AudioManager, stopDrilling);
     } else {
         stopDrilling();
     }
@@ -321,44 +321,6 @@ function checkDrillCollision(direction) {
         }
     }
     return null;
-}
-
-function mineBlock(block) {
-	// 播放挖掘音效
-    if (block.isStone) {
-		AudioManager.playBubu();
-        return;
-    }
-    
-    if (block.isEnd) {
-		AudioManager.playBubu();
-        return;
-    }
-
-    if (block.state === 3) {
-        return;
-    }
-	AudioManager.playWww();
-    if (state.currentMiningBlock !== block) {
-        state.currentMiningBlock = block;
-        state.miningProgress = block.progress;
-    }
-    
-    if (block.state === 1 || block.state === 2) {
-        state.miningProgress += CONFIG.miningSpeed;
-        block.progress = state.miningProgress;
-        
-        if (state.miningProgress >= CONFIG.maxProgress) {
-            block.state = 3;
-            block.isStone = false;
-            block.isEnd = false;
-            state.currentMiningBlock = null;
-            state.miningProgress = 0;
-            stopDrilling();
-        } else if (state.miningProgress >= CONFIG.maxProgress * CONFIG.progressThreshold) {
-            block.state = 2;
-        }
-    }
 }
 
 // ==================== 动画方法 ====================
@@ -621,101 +583,4 @@ function applyPhysics() {
             }
         }
     }
-}
-
-// ==================== 提示框功能 ====================
-function showNotification(message, type = 'success') {
-    state.notification.message = message;
-    state.notification.type = type;
-    state.notification.visible = true;
-    state.notification.timer = 60;
-    state.notification.alpha = 0;
-}
-
-function updateNotification() {
-    if (state.notification.visible) {
-        if (state.notification.timer > 50) {
-            state.notification.alpha = Math.min(1, (60 - state.notification.timer) / 10);
-        }
-        else if (state.notification.timer < 10) {
-            state.notification.alpha = state.notification.timer / 10;
-        }
-        else {
-            state.notification.alpha = 1;
-        }
-        
-        state.notification.timer--;
-        if (state.notification.timer <= 0) {
-            state.notification.visible = false;
-            state.notification.alpha = 0;
-        }
-    }
-}
-
-// 此处设置提示框样式
-function drawNotification() {
-    if (!state.notification.visible) return;
-    
-    const notifX = canvas.width / 2 - 150;
-    const notifY = canvas.height / 2 - 50;
-    const notifWidth = 300;
-    const notifHeight = 60;
-    
-    ctx.globalAlpha = state.notification.alpha;
-    
-    ctx.font = 'bold 32px "幼圆", "黑体", monospace';
-    ctx.textAlign = 'center';
-    
-    // 白色描边
-    ctx.strokeStyle = '#f0227d';
-    ctx.lineWidth = 4;
-    ctx.strokeText(state.notification.message, canvas.width / 2, notifY + 38);
-    
-    // 粉色填充
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(state.notification.message, canvas.width / 2, notifY + 38);
-    
-    ctx.textAlign = 'left';
-    ctx.globalAlpha = 1;
-}
-// ==================== 矿石收集提示（在玩家位置） ====================
-function showOreNotification(message, x, y) {
-    state.oreNotification = {
-        message: message,
-        x: x,
-        y: y,
-        timer: 80,  // 2秒
-        alpha: 1,
-        offsetY: 0  // 向上漂浮的偏移
-    };
-}
-
-function updateOreNotification() {
-    if (state.oreNotification) {
-        state.oreNotification.timer--;
-        state.oreNotification.alpha = state.oreNotification.timer / 30;
-        state.oreNotification.offsetY -= 1;  // 向上漂浮
-        
-        if (state.oreNotification.timer <= 0) {
-            state.oreNotification = null;
-        }
-    }
-}
-
-function drawOreNotification() {
-    if (!state.oreNotification) return;
-    
-    const notif = state.oreNotification;
-    const screenY = notif.y - state.cameraOffset + notif.offsetY;
-    
-    ctx.save();
-    ctx.globalAlpha = notif.alpha;
-    ctx.font = 'bold 12px "幼圆", "黑体", monospace';
-    ctx.textAlign = 'center';
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3;
-    ctx.strokeText(notif.message, notif.x, screenY);
-    ctx.fillStyle = '#FFD700';
-    ctx.fillText(notif.message, notif.x, screenY);
-    ctx.restore();
 }
