@@ -15,6 +15,7 @@
 	<script src="items.js"></script>
 	<script src="bomb.js"></script>
 	<script src="shop.js"></script>
+	<script src="npc.js"></script>
 </head>
 <body>
     <canvas id="gameCanvas" width="1200" height="900"></canvas>
@@ -175,6 +176,7 @@
 			state.miningProgress = 0;
 			state.currentItemPage = 0;
 			state.maxItemPage = 0;
+			NPCManager.reset();
 		}
 
 		function gameOver() {
@@ -191,7 +193,7 @@
 		function init() {
 			state.horizonY = canvas.height / 2 + CONFIG.horizonOffset;
 			state.canvasHeight = canvas.height;
-			
+			NPCManager.init();
 			for (let img in images) {
 				images[img].onload = () => {
 					loadedCount++;
@@ -265,6 +267,8 @@
         function update() {
 			if (state.gamePhase === 'gameover') return;
 			if (state.gamePhase === 'start') return;
+			NPCManager.update();
+			
             state.maxItemPage = Math.max(0, Math.ceil(state.shop.shopItems.length / 8) - 1);
             
             // 商店距离检测
@@ -400,7 +404,7 @@
                     ctx.drawImage(drillImage, drillX, drillY);
                 }
             }
-
+			NPCManager.draw(ctx, state.cameraOffset);
             // 显示深度、金币
             ctx.font = 'bold 24px "幼圆", "黑体", monospace';
             ctx.fillStyle = '#ffffff';
@@ -449,12 +453,11 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // ==================== 键盘事件 ====================
-        window.addEventListener('keydown', (e) => {
-            e.preventDefault();
+		// ==================== 键盘事件 ====================
+		window.addEventListener('keydown', (e) => {
+			e.preventDefault();
 			
 			if (state.gamePhase === 'start') {
-				// 开始画面，任意键进入游戏
 				startGame();
 				return;
 			}
@@ -462,62 +465,125 @@
 			if (state.gamePhase === 'gameover') {
 				return;
 			}
+			
+			// 空格键 - 交互
+			if (e.key === ' ') {
+				// 先检查是否有NPC对话框打开
+				if (NPCManager.handleSpace()) {
+					return;
+				}
+				
+				// 如果没有对话框，检查是否可以与NPC交互
+				const playerCenterX = state.player.bodyX + state.currentBodyImage.width / 2;
+				const playerCenterY = state.player.bodyY + state.currentBodyImage.height / 2;
+				const nearbyNPC = NPCManager.checkInteraction(playerCenterX, playerCenterY);
+				
+				if (nearbyNPC) {
+					nearbyNPC.startTalking();
+					NPCManager.interactionCooldown = 30;
+				}
+				return;
+			}
+			
+			// 上下键 - 对话框导航
+			if (e.key === 'ArrowUp') {
+				if (NPCManager.handleDialogNavigation('up')) {
+					return;
+				}
+			}
+			
+			if (e.key === 'ArrowDown') {
+				if (NPCManager.handleDialogNavigation('down')) {
+					return;
+				}
+			}
+			
+			// 数字键 1-8 使用当前页对应格子的道具
+			if (e.key >= '1' && e.key <= '8') {
+				const slotIndex = parseInt(e.key) - 1;
+				const itemIndex = state.currentItemPage * 8 + slotIndex;
+				
+				if (itemIndex < state.shop.shopItems.length) {
+					const item = state.shop.shopItems[itemIndex];
+					
+					if (item.id === 'bomb') {
+						useBomb();
+					} else if (item.id === 'h_coffee') {
+						useHCoffee();
+					} else if (item.id === 'e_nlp') {
+						useENlp();
+					} else if (item.id === 'e_cdb') {
+						useECdb();
+					}
+				}
+				return;
+			}
+			
+			// 翻页键
+			if (e.key === 'q' || e.key === 'Q') {
+				prevItemPage();
+				return;
+			}
+			if (e.key === 'e' || e.key === 'E') {
+				nextItemPage();
+				return;
+			}
+			
+			// 互动键
+			if (e.key === 'f' || e.key === 'F') {
+				toggleShop();
+				return;
+			}
+			
+			// 方向键 - 自动判断是挖掘还是移动（只在没有对话框时）
+			if (!NPCManager.npcs.some(npc => npc.dialogVisible)) {
+				switch(e.key) {
+					case 'ArrowUp': 
+						startFlying();
+						break;
 						
-            if (e.key >= '1' && e.key <= '8') {
-                const slotIndex = parseInt(e.key) - 1;
-                const itemIndex = state.currentItemPage * 8 + slotIndex;
-                
-                if (itemIndex < state.shop.shopItems.length) {
-                    const item = state.shop.shopItems[itemIndex];
-                    
-                    if (item.id === 'bomb') {
-                        useBomb();
-                    } else if (item.id === 'h_coffee') {
-                        useHCoffee();
-                    } else if (item.id === 'e_nlp') {
-                        useENlp();
-                    } else if (item.id === 'e_cdb') {
-                        useECdb();
-                    }
-                }
-                return;
-            }
-            
-            if (e.key === 'q' || e.key === 'Q') {
-                prevItemPage();
-                return;
-            }
-            if (e.key === 'e' || e.key === 'E') {
-                nextItemPage();
-                return;
-            }
-            
-            if (e.key === 'a' || e.key === 'A') {
-                state.aPressed = true;
-                checkAndStartDrilling();
-                return;
-            }
-            if (e.key === 'f' || e.key === 'F') {
-                toggleShop();
-                return;
-            }
-            
-            switch(e.key) {
-                case 'ArrowUp': 
-                    startFlying();
-                    break;
-                case 'ArrowDown': 
-                    startMovingDown();
-                    break;
-                case 'ArrowLeft': 
-                    startMovingLeft();
-                    break;
-                case 'ArrowRight': 
-                    startMovingRight();
-                    break;
-            }
-        });
-
+					case 'ArrowDown': 
+						if (state.player.grounded) {
+							const hasBlockBelow = checkDirectionHasBlock('down');
+							if (hasBlockBelow) {
+								snapToCurrentBlockCenter();
+								startDrilling('down');
+							} else {
+								startMovingDown();
+							}
+						} else {
+							startMovingDown();
+						}
+						break;
+						
+					case 'ArrowLeft': 
+						if (state.player.grounded) {
+							const hasBlockLeft = checkDirectionHasBlock('left');
+							if (hasBlockLeft) {
+								startDrilling('left');
+							} else {
+								startMovingLeft();
+							}
+						} else {
+							startMovingLeft();
+						}
+						break;
+						
+					case 'ArrowRight': 
+						if (state.player.grounded) {
+							const hasBlockRight = checkDirectionHasBlock('right');
+							if (hasBlockRight) {
+								startDrilling('right');
+							} else {
+								startMovingRight();
+							}
+						} else {
+							startMovingRight();
+						}
+						break;
+				}
+			}
+		});
         window.addEventListener('keyup', (e) => {
             e.preventDefault();
             
