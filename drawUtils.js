@@ -265,3 +265,37 @@ function updateNotification() {
         }
     }
 }
+
+// ==================== 游戏结束画面 ====================
+function drawGameOver() {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    ctx.font = 'bold 64px "幼圆", "黑体", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#FF4444';
+    ctx.fillText('游戏结束', canvas.width / 2, canvas.height / 2 - 50);
+    ctx.restore();
+    
+    const btnX = canvas.width / 2 - 150;
+    const btnY = canvas.height / 2 + 50;
+    drawButton(btnX, btnY, 300, 60, 15, '重新开始');
+}
+
+// ==================== 游戏开始画面 ====================
+function drawGameStart() {
+    ctx.drawImage(images.gamestart, 0, 0, canvas.width, canvas.height);
+    // 闪烁效果
+    const blinkAlpha = (Math.sin(Date.now() * 0.005) + 1) / 2;
+    // 提示文字
+    ctx.save();
+    ctx.font = 'bold 38px "幼圆", "黑体", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 10;
+    ctx.globalAlpha = blinkAlpha;
+    ctx.fillText('按下任意键进入', canvas.width / 2, canvas.height - 100);
+    ctx.restore();
+}

@@ -121,7 +121,15 @@ const AudioManager = {
         if (this.sounds[type]) {
             this.sounds[type].volume = volume;
         }
-    }
+    },
+	
+    stopBgm: function() {
+        if (this.sounds.bgm) {
+            this.sounds.bgm.pause();
+            this.sounds.bgm.currentTime = 0;
+            this.bgmStarted = false;
+        }
+    },
 };
 
 AudioManager.init();

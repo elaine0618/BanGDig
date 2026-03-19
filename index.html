@@ -27,6 +27,7 @@
         
         // ==================== 游戏状态 在此设置HP能量金币初始值 ====================
         const state = {
+			gamePhase: 'start', // 'start', 'playing', 'gameover'
             oxygen: 100,
             hp: 100,
             totalGold: 0,
@@ -122,6 +123,70 @@
         let loadedCount = 0;
         const totalImages = Object.keys(images).length;
 
+		// ==================== 游戏控制 ====================
+		function startGame() {
+			state.gamePhase = 'playing';
+			AudioManager.playOpen();
+			AudioManager.startBgm();
+			
+			// 重置游戏状态
+			resetGame();
+		}
+
+		function resetGame() {
+			// 重置玩家状态
+			state.oxygen = 100;
+			state.hp = 100;
+			state.totalGold = 0;
+			state.player.depth = 0;
+			state.player.headX = (canvas.width - images.head1.width) / 2;
+			state.player.headY = (canvas.height - (images.head1.height + images.body.height)) / 2;
+			state.player.bodyY = state.player.headY + images.head1.height;
+			state.player.bodyX = state.player.headX + (images.head1.width - images.body.width) / 2;
+			state.player.vy = 0;
+			state.player.grounded = false;
+			state.cameraOffset = 0;
+			state.targetCameraOffset = 0;
+			
+			// 重置道具和物品
+			state.items = (() => {
+				const its = {};
+				for (let id in ITEMS) {
+					its[id] = ITEMS[id].count;
+				}
+				return its;
+			})();
+			
+			state.inventory = (() => {
+				const inv = {};
+				for (let type in ORES) {
+					inv[ORES[type].key] = ORES[type].count;
+				}
+				return inv;
+			})();
+			
+			// 重新初始化地块
+			blocks = initAllBlocks(state, blocks, CONFIG, MAP_LAYOUT, ORE_LAYOUT, BLOCK_TYPES, BLOCK_TYPE_MAP);
+			
+			// 重置其他状态
+			state.bombActive = null;
+			state.bombExplosions = [];
+			state.currentMiningBlock = null;
+			state.miningProgress = 0;
+			state.currentItemPage = 0;
+			state.maxItemPage = 0;
+		}
+
+		function gameOver() {
+			state.gamePhase = 'gameover';
+			AudioManager.stopBgm();
+		}
+
+		function restartGame() {
+			state.gamePhase = 'start';
+			resetGame();
+		}
+
         // ==================== 初始化 ====================
 		function init() {
 			state.horizonY = canvas.height / 2 + CONFIG.horizonOffset;
@@ -156,46 +221,50 @@
             state.maxVisibleRow = CONFIG.initialVisibleRows - 1;
         }
 
-        // ==================== 能量生命值系统 ====================
-        function updateOxygenAndHp() {
-            if (state.player.depth === 0) {
-                state.oxygen = OXYGEN_CONFIG.surfaceValue;
-                return;
-            }
-            
-            let consumeRate = OXYGEN_CONFIG.consumeRates[0][1];
-            
-            for (let i = OXYGEN_CONFIG.consumeRates.length - 1; i >= 0; i--) {
-                const [depthThreshold, rate] = OXYGEN_CONFIG.consumeRates[i];
-                if (state.player.depth >= depthThreshold) {
-                    consumeRate = rate;
-                    break;
-                }
-            }
-            
-            state.oxygen = Math.max(0, state.oxygen - consumeRate);
-            
-            if (state.oxygen === 0) {
-                if (!state.hpDamageTimer) {
-                    state.hpDamageTimer = 0;
-                }
-                state.hpDamageTimer++;
-                
-                if (state.hpDamageTimer >= 60) {
-                    state.hp = Math.max(0, state.hp - OXYGEN_CONFIG.iteminti.consumeWhenOxygenZero);
-                    state.hpDamageTimer = 0;
-                    
-                    if (state.hp <= 0) {
-                        console.log('游戏结束');
-                    }
-                }
-            } else {
-                state.hpDamageTimer = 0;
-            }
-        }
+		// ==================== 能量生命值系统 ====================
+		function updateOxygenAndHp() {
+			if (state.gamePhase !== 'playing') return;
+			
+			if (state.player.depth === 0) {
+				state.oxygen = OXYGEN_CONFIG.surfaceValue;
+				return;
+			}
+			
+			let consumeRate = OXYGEN_CONFIG.consumeRates[0][1];
+			
+			for (let i = OXYGEN_CONFIG.consumeRates.length - 1; i >= 0; i--) {
+				const [depthThreshold, rate] = OXYGEN_CONFIG.consumeRates[i];
+				if (state.player.depth >= depthThreshold) {
+					consumeRate = rate;
+					break;
+				}
+			}
+			
+			state.oxygen = Math.max(0, state.oxygen - consumeRate);
+			
+			if (state.oxygen === 0) {
+				if (!state.hpDamageTimer) {
+					state.hpDamageTimer = 0;
+				}
+				state.hpDamageTimer++;
+				
+				if (state.hpDamageTimer >= 60) {
+					state.hp = Math.max(0, state.hp - OXYGEN_CONFIG.iteminti.consumeWhenOxygenZero);
+					state.hpDamageTimer = 0;
+					
+					if (state.hp <= 0) {
+						gameOver();
+					}
+				}
+			} else {
+				state.hpDamageTimer = 0;
+			}
+		}
 
         // ==================== 更新循环 ====================
         function update() {
+			if (state.gamePhase === 'gameover') return;
+			if (state.gamePhase === 'start') return;
             state.maxItemPage = Math.max(0, Math.ceil(state.shop.shopItems.length / 8) - 1);
             
             // 商店距离检测
@@ -258,6 +327,12 @@
         function draw() {
             ctx.save();
             
+			if (state.gamePhase === 'start') {
+				drawGameStart();
+				ctx.restore();
+				return;
+			}
+			
             if (state.isDrilling && state.player.grounded) {
                 ctx.translate(0, state.screenShakeOffset);
             }
@@ -360,6 +435,11 @@
             drawNotification();
             drawOreNotification();
             
+			// 游戏结束
+			if (state.gamePhase === 'gameover') {
+				drawGameOver();
+			}
+						
             ctx.restore();
         }
 
@@ -371,9 +451,18 @@
 
         // ==================== 键盘事件 ====================
         window.addEventListener('keydown', (e) => {
-            AudioManager.startBgm();
             e.preventDefault();
-            
+			
+			if (state.gamePhase === 'start') {
+				// 开始画面，任意键进入游戏
+				startGame();
+				return;
+			}
+			
+			if (state.gamePhase === 'gameover') {
+				return;
+			}
+						
             if (e.key >= '1' && e.key <= '8') {
                 const slotIndex = parseInt(e.key) - 1;
                 const itemIndex = state.currentItemPage * 8 + slotIndex;
@@ -462,11 +551,23 @@
         });
         
         canvas.addEventListener('click', (e) => {
-            AudioManager.startBgm();
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            handleShopClick(x, y);
+			const rect = canvas.getBoundingClientRect();
+			const x = e.clientX - rect.left;
+			const y = e.clientY - rect.top;
+			
+			if (state.gamePhase === 'gameover') {
+				const btnX = canvas.width / 2 - 150;
+				const btnY = canvas.height / 2 + 50;
+				if (x >= btnX && x <= btnX + 300 && y >= btnY && y <= btnY + 60) {
+					restartGame();
+				}
+				return;
+			}
+			
+			if (state.gamePhase === 'playing') {
+				AudioManager.startBgm();
+				handleShopClick(x, y);
+			}
         });
         
         init();
@@ -478,6 +579,7 @@
         
         // ==================== 鼠标特效 ====================
         document.addEventListener('click', function(e) {
+		
             const colors = ['#FFD700', '#f0227d', '#ffffff', '#FFA500', '#FF69B4', '#00FFFF', '#FF4500', '#9370DB', '#32CD32', '#FF1493'];
             const starCount = Math.floor(Math.random() * 3) + 3;
             

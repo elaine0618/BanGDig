@@ -18,9 +18,10 @@ for (let key in BLOCK_TYPES) {
 // ==================== 矿石类型定义 ====================
 // ==================== 下方配置图片 ====================
 const ORES = {
-    1: { name: '蓝色徽章', image: 'k001', price: 100, count: 5, key: 'iron' },
-    2: { name: '星星贴纸', image: 'k002', price: 500, count: 0, key: 'coal' },
-    3: { name: '宝箱', image: 'k003', price: 200, count: 0, key: 'copper' }
+    1: { name: '蓝色徽章', image: 'k001', price: 100, count: 5, key: 'k001' },
+    2: { name: '星星贴纸', image: 'k002', price: 500, count: 0, key: 'k002' },
+    3: { name: '宝箱', image: 'k003', price: 200, count: 0, key: 'k003' },
+    4: { name: '煤炭', image: 'k004', price: 200, count: 0, key: 'k004' },
 };
 
 // ==================== 道具类型定义 ====================
@@ -65,9 +66,9 @@ const MAP_LAYOUT = [
 // ==================== 矿石分布配置 ====================
 const ORE_LAYOUT = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0],
+    [0, 1, 4, 0, 0, 0, 0, 4, 0, 2, 0, 0, 0, 0, 0, 0],
     [0, 0, 3, 0, 1, 0, 2, 0, 0, 0, 3, 0, 0, 0, 1, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0],
+    [0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0],
     [1, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 2],
     [0, 0, 0, 0, 0, 0, 3, 0, 1, 0, 0, 0, 0, 2, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -104,6 +105,7 @@ const CONFIG = {
 // ==================== 图片加载 ====================
 const images = {
     bg: new Image(),
+    gamestart: new Image(),
     head1: new Image(),
     head2: new Image(),
     head3: new Image(),
@@ -133,6 +135,7 @@ const images = {
     k001: new Image(),
     k002: new Image(),
     k003: new Image(),
+    k004: new Image(),
     item001: new Image(),      // 炸弹道具
     item002: new Image(),
     item003: new Image(),
@@ -148,6 +151,7 @@ const images = {
 
 // 设置图片路径
 images.bg.src = 'images/bg.png';
+images.gamestart.src = 'images/gamestart.png';
 images.head1.src = 'images/player_head_01.png';
 images.head2.src = 'images/player_head_02.png';
 images.head3.src = 'images/player_head_03.png';
@@ -177,6 +181,7 @@ images.dikuaiStart3.src = 'images/dikuai_start_03.png';
 images.k001.src = 'images/k_001.png';
 images.k002.src = 'images/k_002.png';
 images.k003.src = 'images/k_003.png';
+images.k004.src = 'images/k_004.png';
 images.item001.src = 'images/item_001.png';
 images.item002.src = 'images/item_002.png';
 images.item003.src = 'images/item_003.png';
