@@ -34,12 +34,10 @@ class NPC {
     constructor(id, name, config) {
         this.id = id;
         this.name = name;
-        this.headImage = config.headImage;
-        this.bodyImage = config.bodyImage;
-        this.headLeftImage = config.headLeftImage;
-        this.headRightImage = config.headRightImage;
-        this.bodyLeftImages = config.bodyLeftImages;
-        this.bodyRightImages = config.bodyRightImages;
+        // 使用完整图片
+        this.standImage = config.standImage;
+        this.walkLeftImages = config.walkLeftImages;
+        this.walkRightImages = config.walkRightImages;
         
         // 位置
         this.x = 0;
@@ -72,7 +70,7 @@ class NPC {
             {
                 id: 1,
                 name: '收集铁矿',
-                requiredItem: 'k004',
+                requiredItem: 'iron',
                 requiredCount: 2,
                 friendshipReward: 10,
                 itemReward: null,
@@ -81,7 +79,7 @@ class NPC {
             {
                 id: 2,
                 name: '收集煤炭',
-                requiredItem: 'k004',
+                requiredItem: 'coal',
                 requiredCount: 6,
                 friendshipReward: 15,
                 itemReward: { id: 'e_cdb', count: 1 },
@@ -90,7 +88,7 @@ class NPC {
             {
                 id: 3,
                 name: '收集铜矿',
-                requiredItem: 'k004',
+                requiredItem: 'copper',
                 requiredCount: 10,
                 friendshipReward: 20,
                 itemReward: { id: 'h_coffee', count: 1 },
@@ -108,7 +106,7 @@ class NPC {
     // 重置位置到地平线上
     resetPosition() {
         this.x = canvas.width / 2 - 200;
-        this.y = state.horizonY - this.bodyImage.height - this.headImage.height;
+        this.y = state.horizonY - this.standImage.height;
         this.state = NPC_STATE.STANDING;
         this.direction = NPC_DIR.RIGHT;
         this.stateTimer = Math.floor(Math.random() * 180) + 300; // 5-8秒
@@ -117,7 +115,7 @@ class NPC {
     
     // 检查玩家是否在面前
     isPlayerNearby(playerX, playerY) {
-        const distance = Math.abs(playerX - (this.x + this.headImage.width / 2));
+        const distance = Math.abs(playerX - (this.x + this.standImage.width / 2));
         return distance < 100 && Math.abs(playerY - this.y) < 50;
     }
     
@@ -351,7 +349,7 @@ class NPC {
         if (!this.dialogVisible) return;
         
         const screenY = this.y - cameraOffset;
-        const dialogX = this.x + this.headImage.width + 20;
+        const dialogX = this.x + this.standImage.width + 20;
         const dialogY = screenY - 30;
         const dialogWidth = 280;
         let dialogHeight = 200;
@@ -424,64 +422,61 @@ class NPC {
                 ctx.font = '16px "幼圆", "黑体", monospace';
                 ctx.fillText(option.text, dialogX + 30, option.y);
             });
-		} else if (this.dialogState === 'help') {
-			// 游戏说明页面
-			ctx.fillStyle = '#333333';
-			ctx.font = 'bold 18px "幼圆", "黑体", monospace';
-			ctx.fillText('基本介绍', dialogX + 20, dialogY + 30);
-			
-			// 分隔线
-			ctx.strokeStyle = '#f0227d';
-			ctx.lineWidth = 1;
-			ctx.beginPath();
-			ctx.moveTo(dialogX + 20, dialogY + 40);
-			ctx.lineTo(dialogX + dialogWidth - 20, dialogY + 40);
-			ctx.stroke();
-			
-			// 说明文本 - 分行显示，自动换行
-			ctx.font = '14px "幼圆", "黑体", monospace';
-			ctx.fillStyle = '#333333';
-			
-			// 原有的排版格式，但每个长文本会自动换行
-			const helpLines = [
-				'1.使用方向键往地下挖土',
-				'2.商店可以交易各种道具物品',
-				'3.星星冲击可以炸开岩石，放置后数秒就会爆炸',
-				'4.注意能量值，需要及时回到地面上补充，否则就会困在地下'
-			];
-			
-			let currentY = dialogY + 70;
-			const maxWidth = dialogWidth - 40; // 左右边距
-			
-			helpLines.forEach((line) => {
-				// 如果当前行宽度超过最大宽度，则自动换行
-				if (ctx.measureText(line).width > maxWidth) {
-					let tempLine = '';
-					for (let char of line) {
-						const testLine = tempLine + char;
-						if (ctx.measureText(testLine).width > maxWidth) {
-							ctx.fillText(tempLine, dialogX + 20, currentY);
-							currentY += 28;
-							tempLine = char;
-						} else {
-							tempLine = testLine;
-						}
-					}
-					if (tempLine) {
-						ctx.fillText(tempLine, dialogX + 20, currentY);
-						currentY += 28;
-					}
-				} else {
-					ctx.fillText(line, dialogX + 20, currentY);
-					currentY += 28;
-				}
-			});
-			
-			// 左下角提示
-			ctx.font = '12px "幼圆", "黑体", monospace';
-			ctx.fillStyle = '#f0227d';
-			ctx.fillText('空格返回', dialogX + 20, dialogY + dialogHeight - 20);
-
+        } else if (this.dialogState === 'help') {
+            // 游戏说明页面
+            ctx.fillStyle = '#333333';
+            ctx.font = 'bold 18px "幼圆", "黑体", monospace';
+            ctx.fillText('基本介绍', dialogX + 20, dialogY + 30);
+            
+            // 分隔线
+            ctx.strokeStyle = '#f0227d';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(dialogX + 20, dialogY + 40);
+            ctx.lineTo(dialogX + dialogWidth - 20, dialogY + 40);
+            ctx.stroke();
+            
+            // 说明文本 - 分行显示，自动换行
+            ctx.font = '14px "幼圆", "黑体", monospace';
+            ctx.fillStyle = '#333333';
+            
+            const helpLines = [
+                '1.使用方向键往地下挖土',
+                '2.商店可以交易各种道具物品',
+                '3.星星冲击可以炸开岩石，放置后数秒就会爆炸',
+                '4.注意能量值，需要及时回到地面上补充，否则就会困在地下'
+            ];
+            
+            let currentY = dialogY + 70;
+            const maxWidth = dialogWidth - 40;
+            
+            helpLines.forEach((line) => {
+                if (ctx.measureText(line).width > maxWidth) {
+                    let tempLine = '';
+                    for (let char of line) {
+                        const testLine = tempLine + char;
+                        if (ctx.measureText(testLine).width > maxWidth) {
+                            ctx.fillText(tempLine, dialogX + 20, currentY);
+                            currentY += 28;
+                            tempLine = char;
+                        } else {
+                            tempLine = testLine;
+                        }
+                    }
+                    if (tempLine) {
+                        ctx.fillText(tempLine, dialogX + 20, currentY);
+                        currentY += 28;
+                    }
+                } else {
+                    ctx.fillText(line, dialogX + 20, currentY);
+                    currentY += 28;
+                }
+            });
+            
+            // 左下角提示
+            ctx.font = '12px "幼圆", "黑体", monospace';
+            ctx.fillStyle = '#f0227d';
+            ctx.fillText('空格返回', dialogX + 20, dialogY + dialogHeight - 20);
         } else if (this.dialogState === 'task_detail') {
             // 任务详情 - 接取页面
             if (!this.currentTask) return;
@@ -533,36 +528,34 @@ class NPC {
             ctx.fillText(`${itemName} x${task.requiredCount} (拥有 ${currentCount})`, dialogX + 45, currentY);
             currentY += 22;
             
-			// 第二行：任务奖励（标题）
-			ctx.fillStyle = '#333333';
-			ctx.font = 'bold 14px "幼圆", "黑体", monospace';
-			ctx.fillText('任务奖励', dialogX + 20, currentY);
-			currentY += 22;
-
-			// 判断是否有道具奖励
-			if (task.itemReward) {
-				// 查找道具信息
-				let rewardItemName = task.itemReward.id;
-				let rewardIcon = null;
-				if (ITEMS[task.itemReward.id]) {
-					rewardItemName = ITEMS[task.itemReward.id].name;
-					rewardIcon = images[ITEMS[task.itemReward.id].icon];
-				}
-				
-				// 绘制奖励图标和数量
-				if (rewardIcon) {
-					ctx.drawImage(rewardIcon, dialogX + 20, currentY - 16, 20, 20);
-				}
-				ctx.font = '14px "幼圆", "黑体", monospace';
-				ctx.fillStyle = '#333333';
-				ctx.fillText(`${rewardItemName} x${task.itemReward.count}`, dialogX + 45, currentY);
-			} else {
-				// 无奖励
-				ctx.font = '14px "幼圆", "黑体", monospace';
-				ctx.fillStyle = '#333333';
-				ctx.fillText('无', dialogX + 20, currentY);
-			}
-			currentY += 22;
+            // 第二行：任务奖励（标题）
+            ctx.fillStyle = '#333333';
+            ctx.font = 'bold 14px "幼圆", "黑体", monospace';
+            ctx.fillText('任务奖励', dialogX + 20, currentY);
+            currentY += 22;
+            
+            // 判断是否有道具奖励
+            if (task.itemReward) {
+                let rewardItemName = task.itemReward.id;
+                let rewardIcon = null;
+                if (ITEMS[task.itemReward.id]) {
+                    rewardItemName = ITEMS[task.itemReward.id].name;
+                    rewardIcon = images[ITEMS[task.itemReward.id].icon];
+                }
+                
+                if (rewardIcon) {
+                    ctx.drawImage(rewardIcon, dialogX + 20, currentY - 16, 20, 20);
+                }
+                ctx.font = '14px "幼圆", "黑体", monospace';
+                ctx.fillStyle = '#333333';
+                ctx.fillText(`${rewardItemName} x${task.itemReward.count}`, dialogX + 45, currentY);
+            } else {
+                ctx.font = '14px "幼圆", "黑体", monospace';
+                ctx.fillStyle = '#333333';
+                ctx.fillText('无', dialogX + 20, currentY);
+            }
+            currentY += 22;
+            
             // 选项
             const options = [
                 { text: '接取任务', y: dialogY + dialogHeight - 60 },
@@ -634,36 +627,33 @@ class NPC {
             ctx.fillText(`${itemName} x${task.requiredCount} (拥有 ${currentCount})`, dialogX + 45, currentY);
             currentY += 22;
             
-			// 第二行：任务奖励（标题）
-			ctx.fillStyle = '#333333';
-			ctx.font = 'bold 14px "幼圆", "黑体", monospace';
-			ctx.fillText('任务奖励', dialogX + 20, currentY);
-			currentY += 22;
-
-			// 判断是否有道具奖励
-			if (task.itemReward) {
-				// 查找道具信息
-				let rewardItemName = task.itemReward.id;
-				let rewardIcon = null;
-				if (ITEMS[task.itemReward.id]) {
-					rewardItemName = ITEMS[task.itemReward.id].name;
-					rewardIcon = images[ITEMS[task.itemReward.id].icon];
-				}
-				
-				// 绘制奖励图标和数量
-				if (rewardIcon) {
-					ctx.drawImage(rewardIcon, dialogX + 20, currentY - 16, 20, 20);
-				}
-				ctx.font = '14px "幼圆", "黑体", monospace';
-				ctx.fillStyle = '#333333';
-				ctx.fillText(`${rewardItemName} x${task.itemReward.count}`, dialogX + 45, currentY);
-			} else {
-				// 无奖励
-				ctx.font = '14px "幼圆", "黑体", monospace';
-				ctx.fillStyle = '#333333';
-				ctx.fillText('无', dialogX + 20, currentY);
-			}
-			currentY += 22;
+            // 第二行：任务奖励（标题）
+            ctx.fillStyle = '#333333';
+            ctx.font = 'bold 14px "幼圆", "黑体", monospace';
+            ctx.fillText('任务奖励', dialogX + 20, currentY);
+            currentY += 22;
+            
+            // 判断是否有道具奖励
+            if (task.itemReward) {
+                let rewardItemName = task.itemReward.id;
+                let rewardIcon = null;
+                if (ITEMS[task.itemReward.id]) {
+                    rewardItemName = ITEMS[task.itemReward.id].name;
+                    rewardIcon = images[ITEMS[task.itemReward.id].icon];
+                }
+                
+                if (rewardIcon) {
+                    ctx.drawImage(rewardIcon, dialogX + 20, currentY - 16, 20, 20);
+                }
+                ctx.font = '14px "幼圆", "黑体", monospace';
+                ctx.fillStyle = '#333333';
+                ctx.fillText(`${rewardItemName} x${task.itemReward.count}`, dialogX + 45, currentY);
+            } else {
+                ctx.font = '14px "幼圆", "黑体", monospace';
+                ctx.fillStyle = '#333333';
+                ctx.fillText('无', dialogX + 20, currentY);
+            }
+            currentY += 22;
             
             // 选项
             const options = [
@@ -694,57 +684,28 @@ class NPC {
         
         const screenY = this.y - cameraOffset;
         
-        let headImg, bodyImg;
+        let image;
         
         if (this.state === NPC_STATE.TALKING) {
             // 对话状态使用正面图片，静止不动
-            headImg = this.headImage;
-            bodyImg = this.bodyImage;
+            image = this.standImage;
         } else if (this.state === NPC_STATE.WALKING || this.state === NPC_STATE.LEAVING || this.state === NPC_STATE.RETURNING) {
             if (this.direction === NPC_DIR.RIGHT) {
-                headImg = this.headRightImage;
-                const frameIndex = Math.floor(this.animationTimer / this.animationSpeed) % this.bodyRightImages.length;
-                bodyImg = this.bodyRightImages[frameIndex];
+                const frameIndex = Math.floor(this.animationTimer / this.animationSpeed) % this.walkRightImages.length;
+                image = this.walkRightImages[frameIndex];
             } else {
-                headImg = this.headLeftImage;
-                const frameIndex = Math.floor(this.animationTimer / this.animationSpeed) % this.bodyLeftImages.length;
-                bodyImg = this.bodyLeftImages[frameIndex];
+                const frameIndex = Math.floor(this.animationTimer / this.animationSpeed) % this.walkLeftImages.length;
+                image = this.walkLeftImages[frameIndex];
             }
         } else {
-            headImg = this.headImage;
-            bodyImg = this.bodyImage;
+            image = this.standImage;
         }
         
-        const bodyX = this.x + (headImg.width - bodyImg.width) / 2;
-        
-        ctx.drawImage(bodyImg, bodyX, screenY + headImg.height);
-        ctx.drawImage(headImg, this.x, screenY);
+        ctx.drawImage(image, this.x, screenY);
         
         // 绘制对话框
         this.drawDialog(ctx, cameraOffset);
     }
-}
-
-// 辅助函数：自动换行
-function wrapText(text, maxWidth) {
-    const words = text.split('');
-    const lines = [];
-    let currentLine = '';
-    
-    for (let char of words) {
-        const testLine = currentLine + char;
-        const metrics = ctx.measureText(testLine);
-        if (metrics.width > maxWidth && currentLine.length > 0) {
-            lines.push(currentLine);
-            currentLine = char;
-        } else {
-            currentLine = testLine;
-        }
-    }
-    if (currentLine) {
-        lines.push(currentLine);
-    }
-    return lines;
 }
 
 // ==================== NPC管理器 ====================
@@ -755,12 +716,9 @@ const NPCManager = {
     // 初始化NPC
     init: function() {
         const ano = new NPC('ano', 'ano', {
-            headImage: images.ano_head_01,
-            bodyImage: images.ano_body_01,
-            headLeftImage: images.ano_head_left,
-            headRightImage: images.ano_head_right,
-            bodyLeftImages: [images.ano_body_left_01, images.ano_body_left_02, images.ano_body_left_01],
-            bodyRightImages: [images.ano_body_right_01, images.ano_body_right_02, images.ano_body_right_01]
+            standImage: images.ano_01,
+            walkLeftImages: [images.ano_left_01, images.ano_left_02],
+            walkRightImages: [images.ano_right_01, images.ano_right_02]
         });
         
         this.npcs.push(ano);

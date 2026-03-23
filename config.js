@@ -240,14 +240,11 @@ const images = {
     boom3: new Image(),         // 爆炸动画3
     shop: new Image(),
     decor01: new Image(),
-	ano_head_01: new Image(),
-	ano_body_01: new Image(),
-	ano_head_left: new Image(),
-	ano_head_right: new Image(),
-	ano_body_left_01: new Image(),
-	ano_body_left_02: new Image(),
-	ano_body_right_01: new Image(),
-	ano_body_right_02: new Image()
+	ano_01: new Image(),
+	ano_left_01: new Image(),
+	ano_left_02: new Image(),
+	ano_right_01: new Image(),
+	ano_right_02: new Image()
 };
 
 // 设置图片路径
@@ -294,11 +291,8 @@ images.boom2.src = 'images/boom_02.png';
 images.boom3.src = 'images/boom_03.png';
 images.shop.src = 'images/shop.png';
 images.decor01.src = 'images/decor01.png';
-images.ano_head_01.src = 'images/npc/ano_head_01.png';
-images.ano_body_01.src = 'images/npc/ano_body_01.png';
-images.ano_head_left.src = 'images/npc/ano_head_left.png';
-images.ano_head_right.src = 'images/npc/ano_head_right.png';
-images.ano_body_left_01.src = 'images/npc/ano_body_left_01.png';
-images.ano_body_left_02.src = 'images/npc/ano_body_left_02.png';
-images.ano_body_right_01.src = 'images/npc/ano_body_right_01.png';
-images.ano_body_right_02.src = 'images/npc/ano_body_right_02.png';
+images.ano_01.src = 'images/npc/ano_01.png';
+images.ano_left_01.src = 'images/npc/ano_left_01.png';
+images.ano_left_02.src = 'images/npc/ano_left_02.png';
+images.ano_right_01.src = 'images/npc/ano_right_01.png';
+images.ano_right_02.src = 'images/npc/ano_right_02.png';
